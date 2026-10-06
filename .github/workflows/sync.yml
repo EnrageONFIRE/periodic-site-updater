@@ -1,0 +1,33 @@
+name: Site news sync
+
+on:
+  schedule:
+    - cron: '3-59/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-news-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout scheduler
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Validate built-in Node runtime
+        run: node -e "if (Number(process.versions.node.split('.')[0]) < 22) process.exit(1)"
+      - name: Verify scheduler offline
+        run: node --test worker.test.mjs workflow.test.mjs
+      - name: Synchronize Site
+        env:
+          SITE_ORIGIN: ${{ secrets.SITE_ORIGIN }}
+          SYNC_SECRET: ${{ secrets.SYNC_SECRET }}
+          MEDIA_PASSES: '5'
+        run: node run-once.mjs
